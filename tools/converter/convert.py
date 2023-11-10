@@ -1,9 +1,10 @@
 from PIL import Image
 import argparse
 from typing import Tuple
-# convert.py
+import sys
+# convert.py - Converts a RGB/RGBA image into a PlantUML Sprite.
 # Author: Fabio Jun Takada Chino
-#
+# This program is licensed under CC0 1.0 Universal
 
 
 def to_gray16(val: int | Tuple[int]) -> int:
@@ -18,44 +19,60 @@ def to_gray16(val: int | Tuple[int]) -> int:
     return (int(total) >> 4) & 0xF
 
 
-# Parse the arguments
-parser = argparse.ArgumentParser(
-    'convert.py',
-    description='Converts a image into a puml sprite.')
-parser.add_argument(
-    '--title', '-t',
-    dest='title',
-    type=str,
-    required=True,
-    help='Title of the sprite.')
-parser.add_argument(
-    '--input', '-i',
-    dest='image',
-    type=str,
-    required=True,
-    help='The image file.')
+def convert(file: str, title: str):
+    """
+    Loads and converts the image.
+    """
+    # Load the image
+    img = Image.open(file)
+    if img.getpalette() is not None:
+        raise ValueError('Only RGB images are supported.')
 
-args = parser.parse_args()
+    width = img.width
+    height = img.height
 
-# Extract the parameters
-title = args.title
-file = args.image
+    print('@startuml')
+    print(f'sprite ${title} [{width}x{height}/16] {{')
+    for y in range(0, height):
+        line = ''
+        for x in range(0, width):
+            p = to_gray16(img.getpixel((x, y)))
+            line = line + hex(p)[-1:]
+        print(line)
+    print('}')
+    print('@enduml')
 
-# Load the image
-img = Image.open(file)
-if img.getpalette() is not None:
-    raise ValueError('Only RGB images are supported.')
 
-width = img.width
-height = img.height
+def main():
+    # Parse the arguments
+    parser = argparse.ArgumentParser(
+        'convert.py',
+        description='Converts a image into a PlantUML sprite.')
+    parser.add_argument(
+        '--title', '-t',
+        dest='title',
+        type=str,
+        required=True,
+        help='Title of the sprite.')
+    parser.add_argument(
+        '--input', '-i',
+        dest='image',
+        type=str,
+        required=True,
+        help='The image file.')
 
-print('@startuml')
-print(f'sprite ${title} [{width}x{height}/16] {{')
-for y in range(0, height):
-    line = ''
-    for x in range(0, width):
-        p = to_gray16(img.getpixel((x, y)))
-        line = line + hex(p)[-1:]
-    print(line)
-print('}')
-print('@enduml')
+    args = parser.parse_args()
+
+    # Extract the parameters
+    title = args.title
+    file = args.image
+
+    try:
+        convert(file, title)
+    except Exception as ex:
+        print(str(ex), file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
